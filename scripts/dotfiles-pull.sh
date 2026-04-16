@@ -14,8 +14,10 @@ LOCAL=$(git rev-parse HEAD)
 REMOTE=$(git rev-parse origin/main)
 
 if [ "$LOCAL" = "$REMOTE" ]; then
+  echo "Skills up to date."
   exit 0
 fi
 
 git pull --quiet --rebase origin main >>"$LOG" 2>&1
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] pull: $(git log --oneline -1)" >>"$LOG"
+echo "Skills synced: $(git log --oneline -1)"
