@@ -14,7 +14,7 @@ claude/
 Run these commands once after cloning:
 
 ```bash
-git clone https://github.com/rac2/dotfiles.git ~/dotfiles
+git clone https://github.com/rodrigo-rac2/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 bash setup.sh
 ```
@@ -67,7 +67,7 @@ If another machine has skills in `~/.claude/commands/` that are not yet in this 
 
 1. Clone the repo and run setup:
    ```bash
-   git clone https://github.com/rac2/dotfiles.git ~/dotfiles
+   git clone https://github.com/rodrigo-rac2/dotfiles.git ~/dotfiles
    ```
 
 2. Copy any local skills that don't exist in the repo into the repo:
@@ -121,7 +121,7 @@ If you (Claude) are reading this after being asked to set up or sync skills on a
 
 4. **If `~/dotfiles` does not exist** — clone it first:
    ```bash
-   git clone https://github.com/rac2/dotfiles.git ~/dotfiles
+   git clone https://github.com/rodrigo-rac2/dotfiles.git ~/dotfiles
    ```
    Then follow step 3.
 
