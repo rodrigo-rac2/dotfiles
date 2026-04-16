@@ -1,0 +1,14 @@
+[Unit]
+Description=Dotfiles Claude commands watcher — auto-commit/push on skill changes
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash HOME_PLACEHOLDER/dotfiles/scripts/dotfiles-watch.sh
+Restart=always
+RestartSec=10
+Environment=HOME=HOME_PLACEHOLDER
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=default.target
