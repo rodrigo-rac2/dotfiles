@@ -58,6 +58,17 @@ Claude Code (Anthropic) supported this QA cycle: test scenario design, browser a
 - Always include the AI Assistance section at the end — this is required for management AI usage reporting.
 - **Screenshots**: If screenshots were taken during testing (files in `.playwright-mcp/`), always include the Screenshots block before AI Assistance. List each file by name with a one-line description of what it shows. If no browser automation was used, omit the Screenshots block.
 
+## After posting the stamp — ticket lifecycle
+
+After the comment is posted, always handle the ticket status and assignment:
+
+**If result is PASS:**
+1. Transition the ticket to **Ready for Deployment**. The path through the C1 workflow is: current status → In Progress (51) → Ready for Testing (41) → Testing/In Testing (81) → Ready for Deployment (91). Skip steps already passed (e.g. if the ticket is already in Ready for Testing, start from there).
+2. Reassign the ticket to the developer who worked on it (the reporter, or whoever last moved it to Ready for Testing — check the issue fields).
+
+**If result is PARTIAL or FAIL:**
+Stop after posting the comment. Ask the user: "Result is [PARTIAL/FAIL] — how would you like me to handle the ticket? I can leave it in place, move it back to In Progress, or reassign it to the developer."
+
 ## Arguments
 
 The user may pass a ticket key as the argument (e.g. `/qa-stamp C1-6128`). Use it directly.
