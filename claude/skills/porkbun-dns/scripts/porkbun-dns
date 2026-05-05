@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+# porkbun-dns: Manage DNS records on Porkbun via their JSON API.
+set -euo pipefail
+
+PORKBUN_API="https://api.porkbun.com/api/json/v3"
+CREDS_FILE="${PORKBUN_CREDENTIALS:-$HOME/.config/porkbun/credentials}"
+
+load_creds() {
+    if [[ -n "${PORKBUN_API_KEY:-}" && -n "${PORKBUN_SECRET_KEY:-}" ]]; then
+        return 0
+    fi
+    if [[ -f "$CREDS_FILE" ]]; then
+        # shellcheck disable=SC1090
+        source "$CREDS_FILE"
+    fi
+    if [[ -z "${PORKBUN_API_KEY:-}" || -z "${PORKBUN_SECRET_KEY:-}" ]]; then
+        cat >&2 <<EOF
+ERROR: Porkbun API credentials not set.
+Either export PORKBUN_API_KEY and PORKBUN_SECRET_KEY,
+or save them in $CREDS_FILE (see 'porkbun-dns help').
+EOF
+        exit 1
+    fi
+}
+
+api_call() {
+    local path="$1"; shift
+    local extra_json="${1-}"
+    [[ -z "$extra_json" ]] && extra_json='{}'
+    local payload response
+    payload=$(jq -n \
+        --arg ak "$PORKBUN_API_KEY" \
+        --arg sk "$PORKBUN_SECRET_KEY" \
+        --argjson extra "$extra_json" \
+        '$extra + {apikey: $ak, secretapikey: $sk}')
+    response=$(curl -sS -X POST "$PORKBUN_API$path" \
+        -H "Content-Type: application/json" \
+        -d "$payload")
+    if [[ "$(jq -r '.status // empty' <<<"$response")" == "ERROR" ]]; then
+        echo "Porkbun API error: $(jq -r '.message' <<<"$response")" >&2
+        exit 1
+    fi
+    echo "$response"
+}
+
+cmd_ping() {
+    api_call /ping | jq .
+}
+
+cmd_list() {
+    local domain="$1"
+    api_call "/dns/retrieve/$domain" \
+        | jq '.records | map({id, type, name, content, ttl, prio})'
+}
+
+cmd_add() {
+    local domain="$1" type="$2" name="$3" content="$4" ttl="${5:-600}"
+    local extra
+    extra=$(jq -n \
+        --arg n "$name" --arg t "$type" --arg c "$content" --arg ttl "$ttl" \
+        '{name: $n, type: $t, content: $c, ttl: $ttl}')
+    api_call "/dns/create/$domain" "$extra" | jq .
+}
+
+cmd_delete() {
+    local domain="$1" id="$2"
+    api_call "/dns/delete/$domain/$id" | jq .
+}
+
+cmd_google_verify() {
+    local domain="$1" token="$2"
+    # Google gives you the token; we add the "google-site-verification=" prefix.
+    local extra
+    extra=$(jq -n --arg c "google-site-verification=$token" \
+        '{name: "", type: "TXT", content: $c, ttl: "600"}')
+    api_call "/dns/create/$domain" "$extra" | jq .
+}
+
+cmd_google_mx() {
+    local domain="$1"
+    # Google Workspace 2023+ simplified MX: single record smtp.google.com priority 1.
+    local extra
+    extra=$(jq -n \
+        '{name: "", type: "MX", content: "smtp.google.com", ttl: "3600", prio: "1"}')
+    api_call "/dns/create/$domain" "$extra" | jq .
+}
+
+usage() {
+    cat <<'USAGE'
+porkbun-dns — manage DNS records on Porkbun
+
+Setup (one-time):
+  1. Generate API key+secret at https://porkbun.com/account/api
+  2. Enable API access for the domain at https://porkbun.com/account/domainsSpeedy
+     (Domain row → DETAILS → toggle "API ACCESS" ON)
+  3. Save credentials:
+       mkdir -p ~/.config/porkbun
+       cat > ~/.config/porkbun/credentials <<EOF
+       export PORKBUN_API_KEY="pk1_..."
+       export PORKBUN_SECRET_KEY="sk1_..."
+       EOF
+       chmod 600 ~/.config/porkbun/credentials
+
+Commands:
+  ping                                       Test auth (also returns your public IP)
+  list <domain>                              List all DNS records on a domain
+  add <domain> <type> <name> <content> [ttl] Add a DNS record (name="" = apex)
+  delete <domain> <record-id>                Delete a DNS record by ID
+  google-verify <domain> <token>             Add Google site verification TXT
+  google-mx <domain>                         Add Google Workspace MX (smtp.google.com)
+
+Examples:
+  porkbun-dns ping
+  porkbun-dns list rodrigo-qatest.xyz
+  porkbun-dns google-verify rodrigo-qatest.xyz abc123def456
+  porkbun-dns google-mx rodrigo-qatest.xyz
+  porkbun-dns delete rodrigo-qatest.xyz 123456789
+USAGE
+}
+
+main() {
+    local cmd="${1:-help}"; shift || true
+    case "$cmd" in
+        ping)            load_creds; cmd_ping ;;
+        list)            load_creds; cmd_list "$@" ;;
+        add)             load_creds; cmd_add "$@" ;;
+        delete)          load_creds; cmd_delete "$@" ;;
+        google-verify)   load_creds; cmd_google_verify "$@" ;;
+        google-mx)       load_creds; cmd_google_mx "$@" ;;
+        help|-h|--help)  usage ;;
+        *) echo "Unknown command: $cmd" >&2; usage; exit 1 ;;
+    esac
+}
+
+main "$@"

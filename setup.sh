@@ -43,7 +43,41 @@ else
   echo "[commands] Symlinked ~/.claude/commands → $DOTFILES/claude/commands"
 fi
 
-# ── 2. Claude Code SessionStart hook ────────────────────────────────────────
+# ── 2. Claude skills symlink ────────────────────────────────────────────────
+
+CLAUDE_SKILLS="$HOME/.claude/skills"
+
+if [ -L "$CLAUDE_SKILLS" ]; then
+  echo "[skills] Already symlinked: $(readlink "$CLAUDE_SKILLS")"
+else
+  if [ -d "$CLAUDE_SKILLS" ]; then
+    echo "[skills] Found existing directory — merging untracked skills..."
+    mkdir -p "$DOTFILES/claude/skills"
+    added=0
+    for d in "$CLAUDE_SKILLS"/*/; do
+      [ -d "$d" ] || continue
+      name=$(basename "$d")
+      if [ ! -d "$DOTFILES/claude/skills/$name" ]; then
+        cp -r "$d" "$DOTFILES/claude/skills/$name"
+        echo "  Copied: $name"
+        added=$((added + 1))
+      fi
+    done
+    if [ "$added" -gt 0 ]; then
+      echo "  $added skill(s) copied. Committing..."
+      cd "$DOTFILES"
+      git add claude/skills/
+      git commit -m "merge skills from $(hostname)"
+      git push --quiet
+    fi
+    rm -rf "$CLAUDE_SKILLS"
+  fi
+  mkdir -p "$DOTFILES/claude/skills"
+  ln -sf "$DOTFILES/claude/skills" "$CLAUDE_SKILLS"
+  echo "[skills] Symlinked ~/.claude/skills → $DOTFILES/claude/skills"
+fi
+
+# ── 3. Claude Code SessionStart hook ────────────────────────────────────────
 
 echo ""
 echo "[hook] Installing SessionStart hook into ~/.claude/settings.json..."
@@ -112,11 +146,14 @@ chmod +x "$DOTFILES/scripts/install-hook.py"
 echo ""
 echo "=== Setup complete ==="
 echo ""
-echo "Active skills:"
+echo "Active commands:"
 ls "$CLAUDE_COMMANDS"
+echo ""
+echo "Active skills:"
+ls "$CLAUDE_SKILLS"
 echo ""
 echo "Sync log: ~/.claude/dotfiles-sync.log"
 echo ""
 echo "To sync manually:"
 echo "  Pull: cd ~/dotfiles && git pull"
-echo "  Push: cd ~/dotfiles && git add claude/commands/ && git commit -m 'update' && git push"
+echo "  Push: cd ~/dotfiles && git add claude/commands/ claude/skills/ && git commit -m 'update' && git push"
