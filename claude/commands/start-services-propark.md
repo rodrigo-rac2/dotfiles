@@ -79,7 +79,9 @@ After seeder finishes, QA users are seeded automatically. To seed them manually:
 cd ~/propark/repos/proparcs-models && node scripts/seed-local-qa-users.js
 ```
 
-### 5. Verify all services are up
+### 5. Verify all services are up on the EXACT required ports
+
+**Port assignments are fixed — do not accept any service on a different port. Auto tests will fail.**
 
 ```bash
 for port in 5173 6543 3000 5001 3123 8001; do
@@ -91,6 +93,16 @@ for port in 5173 6543 3000 5001 3123 8001; do
   fi
 done
 ```
+
+If any service is not on its assigned port (e.g. proparcs landed on 3001 or 3002 instead of 3000):
+1. Check what's occupying the correct port: `lsof -i :<port>`
+2. Kill the misplaced service process
+3. Kill any process blocking the correct port
+4. Restart the service with the explicit PORT env var:
+   - proparcs: `cd ~/propark/repos/proparcs && PORT=3000 npm start >> ~/propark/repos/logs/proparcs.log 2>&1 &`
+5. Re-verify the port is now correct before reporting success
+
+**Do not report a service as UP unless it is on its exact assigned port.**
 
 ### 6. Report status
 
